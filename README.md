@@ -552,16 +552,14 @@ API для симуляции и анализа городских маршру�
 
 # OpenAPI
 
+
 openapi: 3.0.3
 info:
   title: CitySim API
   version: 1.0.0
   description: |
-    API для симуляции и анализа городских маршрутов. 
+    API для симуляции и анализа городских маршрутов.
     Позволяет загружать сценарии, рассчитывать транспортные показатели и анализировать результаты.
-  contact:
-    name: CitySim Team
-    email: support@citysim.io
 
 servers:
   - url: https://api.citysim.io/v1
@@ -575,6 +573,7 @@ tags:
     description: Запуск симуляций и анализ результатов
 
 paths:
+
   /auth/login:
     post:
       tags: [Auth]
@@ -597,19 +596,46 @@ paths:
     get:
       tags: [Scenarios]
       summary: Получение списка сценариев
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: name
+          in: query
+          description: Фильтр по названию сценария
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Кол-во результатов на страницу
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          description: Смещение для пагинации
+          schema:
+            type: integer
+            default: 0
       responses:
         '200':
           description: Список сценариев
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Scenario'
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Scenario'
 
     post:
       tags: [Scenarios]
       summary: Загрузка нового сценария маршрутов
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -630,6 +656,8 @@ paths:
     delete:
       tags: [Scenarios]
       summary: Удаление сценария
+      security:
+        - BearerAuth: []
       parameters:
         - in: path
           name: scenario_id
@@ -646,6 +674,8 @@ paths:
     post:
       tags: [Simulation]
       summary: Запуск моделирования по сценарию
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -664,6 +694,8 @@ paths:
     get:
       tags: [Simulation]
       summary: Получение результатов моделирования
+      security:
+        - BearerAuth: []
       parameters:
         - name: calculation_id
           in: path
@@ -681,7 +713,14 @@ paths:
           description: Расчет не найден
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
+
     LoginRequest:
       type: object
       properties:
@@ -753,3 +792,102 @@ components:
             overload_score:
               type: number
               example: 0.31
+
+# 🧠 Основные сущности, которые нужно хранить
+## Пользователи
+- Сценарии — набор маршрутов
+- Маршруты — линии внутри сценария
+- Остановки — точки маршрута
+- Расчёты — симуляции по сценарию
+- Метрики — результат расчёта
+
+## 🧱 Предварительная ER-диаграмма (словами)
+User
+└── id (PK)
+└── username
+└── email
+└── role
+
+Scenario
+└── id (PK)
+└── user_id (FK → User.id)
+└── name
+└── created_at
+
+Route
+└── id (PK)
+└── scenario_id (FK → Scenario.id)
+└── name
+└── type (bus, tram, metro)
+
+Stop
+└── id (PK)
+└── route_id (FK → Route.id)
+└── name
+└── lat
+└── lon
+└── order
+
+Calculation
+└── id (PK)
+└── scenario_id (FK → Scenario.id)
+└── status (queued, done, error)
+└── created_at
+
+Metric
+└── id (PK)
+└── calculation_id (FK → Calculation.id)
+└── coverage_percent
+└── avg_travel_time
+└── overload_score
+
+## Визуальная ER-диаграмма проекта CitySim
+
+![citysim_er_diagram](https://github.com/user-attachments/assets/068779be-383a-4ab3-b03f-4e8497fe3194)
+
+## SQL-схема (DDL) для PostgreSQL
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE scenarios (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id INTEGER REFERENCES users(id),
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE routes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scenario_id UUID REFERENCES scenarios(id) ON DELETE CASCADE,
+    name VARCHAR(100),
+    type VARCHAR(20)  -- e.g. bus, tram, metro
+);
+
+CREATE TABLE stops (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    route_id UUID REFERENCES routes(id) ON DELETE CASCADE,
+    name VARCHAR(100),
+    lat DOUBLE PRECISION,
+    lon DOUBLE PRECISION,
+    stop_order INTEGER
+);
+
+CREATE TABLE calculations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scenario_id UUID REFERENCES scenarios(id) ON DELETE CASCADE,
+    status VARCHAR(20),  -- queued, done, error
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE metrics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    calculation_id UUID REFERENCES calculations(id) ON DELETE CASCADE,
+    coverage_percent NUMERIC(5,2),
+    avg_travel_time NUMERIC(6,2),
+    overload_score NUMERIC(4,2)
+);
