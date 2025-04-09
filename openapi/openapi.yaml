@@ -1,0 +1,241 @@
+# Полная OpenAPI 3.0 спецификация (в YAML)
+
+openapi: 3.0.3
+info:
+  title: CitySim API
+  version: 1.0.0
+  description: |
+    API для симуляции и анализа городских маршрутов.
+    Позволяет загружать сценарии, рассчитывать транспортные показатели и анализировать результаты.
+
+servers:
+  - url: https://api.citysim.io/v1
+
+tags:
+  - name: Auth
+    description: Авторизация и аутентификация
+  - name: Scenarios
+    description: Работа со сценариями маршрутов
+  - name: Simulation
+    description: Запуск симуляций и анализ результатов
+
+paths:
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Авторизация пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /scenarios:
+    get:
+      tags: [Scenarios]
+      summary: Получение списка сценариев
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: name
+          in: query
+          description: Фильтр по названию сценария
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Кол-во результатов на страницу
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          description: Смещение для пагинации
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Список сценариев
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Scenario'
+
+    post:
+      tags: [Scenarios]
+      summary: Загрузка нового сценария маршрутов
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                scenario_name:
+                  type: string
+      responses:
+        '201':
+          description: Сценарий успешно загружен
+
+  /scenarios/{scenario_id}:
+    delete:
+      tags: [Scenarios]
+      summary: Удаление сценария
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: scenario_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Успешно удалено
+        '404':
+          description: Сценарий не найден
+
+  /simulation:
+    post:
+      tags: [Simulation]
+      summary: Запуск моделирования по сценарию
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationRequest'
+      responses:
+        '200':
+          description: Расчёт запущен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResponse'
+
+  /simulation/{calculation_id}/results:
+    get:
+      tags: [Simulation]
+      summary: Получение результатов моделирования
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: calculation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Метрики симуляции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResults'
+        '404':
+          description: Расчет не найден
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+
+    Scenario:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    SimulationRequest:
+      type: object
+      properties:
+        scenario_id:
+          type: string
+        parameters:
+          type: object
+          properties:
+            start_time:
+              type: string
+              example: "07:00"
+            end_time:
+              type: string
+              example: "10:00"
+            interval_minutes:
+              type: integer
+              example: 5
+      required: [scenario_id, parameters]
+
+    SimulationResponse:
+      type: object
+      properties:
+        calculation_id:
+          type: string
+        status:
+          type: string
+          enum: [queued, processing, done]
+
+    SimulationResults:
+      type: object
+      properties:
+        calculation_id:
+          type: string
+        metrics:
+          type: object
+          properties:
+            coverage_percent:
+              type: number
+              example: 87.3
+            average_travel_time:
+              type: number
+              example: 22.4
+            overload_score:
+              type: number
+              example: 0.31
