@@ -8,7 +8,6 @@ erDiagram
     ROUTE ||--o{ STOP : "Включает"
     SCENARIO ||--o{ CALCULATION : "Имеет"
     CALCULATION ||--o{ METRIC : "Генерирует"
-```
 
 ## Скрипт для создания базы данных (DDL).
 
