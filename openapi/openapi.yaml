@@ -1,3 +1,5 @@
+# Полная OpenAPI 3.0 спецификация (в YAML)
+
 openapi: 3.0.3
 info:
   title: CitySim API
