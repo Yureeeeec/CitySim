@@ -1,9 +1,7 @@
-# Полная OpenAPI 3.0 спецификация (в YAML)
-
 openapi: 3.0.3
 info:
   title: CitySim API
-  version: 1.0.0
+  version: 2.0.0
   description: |
     API для симуляции и анализа городских маршрутов.
     Позволяет загружать сценарии, рассчитывать транспортные показатели и анализировать результаты.
@@ -14,6 +12,8 @@ servers:
 tags:
   - name: Auth
     description: Авторизация и аутентификация
+  - name: Users
+    description: Управление пользователями
   - name: Scenarios
     description: Работа со сценариями маршрутов
   - name: Simulation
@@ -21,6 +21,9 @@ tags:
 
 paths:
 
+  # =========================================
+  # Аутентификация
+  # =========================================
   /auth/login:
     post:
       tags: [Auth]
@@ -31,6 +34,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: "analyst1"
+              password: "securepass123"
       responses:
         '200':
           description: Успешная авторизация
@@ -38,7 +44,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
+  # =========================================
+  # Управление пользователями
+  # =========================================
+  /users:
+    post:
+      tags: [Users]
+      summary: Создание нового пользователя
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+            example:
+              username: "new_user"
+              email: "user@city.gov"
+              role: "analyst"
+      responses:
+        '201':
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{user_id}:
+    put:
+      tags: [Users]
+      summary: Обновление данных пользователя
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Данные обновлены
+    delete:
+      tags: [Users]
+      summary: Удаление пользователя
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Пользователь удален
+        '403':
+          description: Нет прав на удаление
+
+  # =========================================
+  # Работа со сценариями
+  # =========================================
   /scenarios:
     get:
       tags: [Scenarios]
@@ -48,39 +126,41 @@ paths:
       parameters:
         - name: name
           in: query
-          description: Фильтр по названию сценария
+          description: Фильтр по названию
+          schema:
+            type: string
+        - name: transport_type
+          in: query
+          description: Тип транспорта (bus, tram, metro)
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Сортировка (created_at, name)
           schema:
             type: string
         - name: limit
           in: query
-          description: Кол-во результатов на страницу
+          description: Лимит результатов
           schema:
             type: integer
             default: 10
-        - name: offset
+        - name: cursor
           in: query
-          description: Смещение для пагинации
+          description: Ключ пагинации
           schema:
-            type: integer
-            default: 0
+            type: string
       responses:
         '200':
           description: Список сценариев
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  total:
-                    type: integer
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Scenario'
+                $ref: '#/components/schemas/ScenarioListResponse'
 
     post:
       tags: [Scenarios]
-      summary: Загрузка нового сценария маршрутов
+      summary: Загрузка нового сценария
       security:
         - BearerAuth: []
       requestBody:
@@ -97,7 +177,11 @@ paths:
                   type: string
       responses:
         '201':
-          description: Сценарий успешно загружен
+          description: Сценарий загружен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
 
   /scenarios/{scenario_id}:
     delete:
@@ -111,16 +195,92 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '204':
           description: Успешно удалено
         '404':
           description: Сценарий не найден
+        '403':
+          description: Нет прав на удаление
 
+    post:
+      tags: [Scenarios]
+      summary: Восстановление версии сценария
+      parameters:
+        - in: path
+          name: scenario_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type: string
+                  description: Хэш версии
+      responses:
+        '200':
+          description: Версия восстановлена
+
+  # =========================================
+  # Управление маршрутами и остановками
+  # =========================================
+  /scenarios/{scenario_id}/routes:
+    post:
+      tags: [Scenarios]
+      summary: Создание маршрута
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: scenario_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteCreateRequest'
+      responses:
+        '201':
+          description: Маршрут создан
+
+  /routes/{route_id}/stops:
+    post:
+      tags: [Scenarios]
+      summary: Добавление остановки
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: route_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StopCreateRequest'
+      responses:
+        '201':
+          description: Остановка добавлена
+
+  # =========================================
+  # Симуляции
+  # =========================================
   /simulation:
     post:
       tags: [Simulation]
-      summary: Запуск моделирования по сценарию
+      summary: Запуск моделирования
       security:
         - BearerAuth: []
       requestBody:
@@ -129,6 +289,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SimulationRequest'
+            example:
+              scenario_id: "550e8400-e29b-41d4-a716-446655440000"
+              parameters:
+                start_time: "07:00"
+                end_time: "10:00"
+                interval_minutes: 5
       responses:
         '200':
           description: Расчёт запущен
@@ -140,7 +306,7 @@ paths:
   /simulation/{calculation_id}/results:
     get:
       tags: [Simulation]
-      summary: Получение результатов моделирования
+      summary: Результаты моделирования
       security:
         - BearerAuth: []
       parameters:
@@ -149,6 +315,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Метрики симуляции
@@ -167,7 +334,7 @@ components:
       bearerFormat: JWT
 
   schemas:
-
+    # ================= Базовые схемы =================
     LoginRequest:
       type: object
       properties:
@@ -183,34 +350,101 @@ components:
         access_token:
           type: string
 
+    # ================= Пользователи =================
+    UserCreateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, analyst, viewer]
+      required: [username, email, role]
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+
+    # ================= Сценарии =================
     Scenario:
       type: object
       properties:
         id:
           type: string
+          format: uuid
         name:
           type: string
         created_at:
           type: string
           format: date-time
 
+    ScenarioListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Scenario'
+        next_cursor:
+          type: string
+
+    # ================= Маршруты и остановки =================
+    RouteCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [bus, tram, metro]
+
+    StopCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+        order:
+          type: integer
+
+    # ================= Симуляции =================
     SimulationRequest:
       type: object
       properties:
         scenario_id:
           type: string
+          format: uuid
         parameters:
           type: object
           properties:
             start_time:
               type: string
-              example: "07:00"
             end_time:
               type: string
-              example: "10:00"
             interval_minutes:
               type: integer
-              example: 5
       required: [scenario_id, parameters]
 
     SimulationResponse:
@@ -218,6 +452,7 @@ components:
       properties:
         calculation_id:
           type: string
+          format: uuid
         status:
           type: string
           enum: [queued, processing, done]
@@ -227,15 +462,13 @@ components:
       properties:
         calculation_id:
           type: string
+          format: uuid
         metrics:
           type: object
           properties:
             coverage_percent:
               type: number
-              example: 87.3
             average_travel_time:
               type: number
-              example: 22.4
             overload_score:
               type: number
-              example: 0.31
