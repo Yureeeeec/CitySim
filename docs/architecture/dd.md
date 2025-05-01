@@ -26,21 +26,21 @@ flowchart TD
 
 ## Технологический стек
 
-| Слой              | Компонент               | Технологии                         |
-|-------------------|-------------------------|------------------------------------|
-| Клиентский слой   | SPA                     | React 18, TypeScript               |
-|                   | Карта                   | Deck.gl, OpenLayers                |
-|                   | Графики и отчеты        | Chart.js, D3.js                    |
-|                   | Real-Time Updates       | WebSocket                          |
-| Серверный слой    | API Gateway             | FastAPI, OpenAPI 3.0               |
-|                   | Auth Service            | JWT, OAuth2                        |
-|                   | Scenario Service        | Python 3.10, SQLAlchemy, gRPC      |
-|                   | Calculation Service     | Celery, Pandas                     |
-|                   | Очереди задач           | RabbitMQ                           |
-| Data слой         | Основная БД             | PostgreSQL + PostGIS               |
-|                   | In-Memory Cache         | Redis Cluster                      |
-|                   | Объектное хранилище     | MinIO                              |
-|                   | Мониторинг              | Prometheus, Grafana                |
+| Слой            | Компонент           | Технологии                         |
+|-----------------|---------------------|------------------------------------|
+| Клиентский слой | SPA                 | React 18, TypeScript               |
+|                 | Карта               | Deck.gl, OpenLayers                |
+|                 | Графики и отчеты    | Chart.js, D3.js                    |
+|                 | Real-Time Updates   | WebSocket                          |
+| Серверный слой  | API Gateway         | FastAPI, OpenAPI 3.0               |
+|                 | Auth Service        | JWT, OAuth2                        |
+|                 | Scenario Service    | Python 3.10, SQLAlchemy, gRPC      |
+|                 | Calculation Service | Celery, Pandas                     |
+|                 | Очереди задач       | RabbitMQ                           |
+| Data слой       | Основная БД         | PostgreSQL + PostGIS               |
+|                 | In-Memory Cache     | Redis Cluster                      |
+|                 | Объектное хранилище | MinIO                              |
+|                 | Мониторинг          | Prometheus, Grafana                |
 
 ## Ключевые метрики и производительность
 
