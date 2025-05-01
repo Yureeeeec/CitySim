@@ -10,9 +10,9 @@ flowchart TD
     end
 
     subgraph Серверный_слой
-        F[API Gateway] -->|FastAPI, REST| G[Auth Service (JWT)]
-        F -->|gRPC| H[Scenario Service]
-        F -->|AMQP| I[Calculation Service (Celery)]
+        F[API Gateway] -->|FastAPI, REST| G["Auth Service (JWT)"]
+        F -->|gRPC| H["Scenario Service"]
+        F -->|AMQP| I["Calculation Service (Celery)"]
         I --> J[Очереди задач RabbitMQ]
     end
 
