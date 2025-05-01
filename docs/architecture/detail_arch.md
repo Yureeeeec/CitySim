@@ -18,14 +18,23 @@ graph TD
         E[API Gateway] -->|FastAPI| F[Сервис сценариев]
         E -->|JWT| G[Сервис аутентификации]
         E -->|Celery| H[Сервис расчетов]
+        E -->|Pandas| I[Сервис аналитики]
     end
 
-    subgraph Data
-        I[(PostgreSQL)] --> F
-        J[(MinIO)] --> H
-        K[(Redis)] --> H
-        L[RabbitMQ] --> H
+    subgraph Хранилища
+        J[(PostgreSQL)] -->|Основные данные| F
+        K[(MinIO)] -->|Файлы GTFS/CSV| H
+        L[(Redis)] -->|Кэш| H
+        M[RabbitMQ] -->|Очереди задач| H
     end
+
+    subgraph Интеграции
+        N[OpenStreetMap] -->|Картографические данные| B
+        O[GTFS-провайдеры] -->|Импорт данных| F
+    end
+
+    A -->|HTTPS| E
+    H -->|WebSocket| A
 ```
 
 Технологический стек:
