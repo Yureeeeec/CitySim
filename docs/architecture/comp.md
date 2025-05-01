@@ -21,7 +21,7 @@ GET /api/v1/scenarios/{id}/status
 Authorization: Bearer <token>
 ```
 
-### База данных
+### База данных - PostgreSQL
 ```sql
 CREATE TABLE scenarios (
     id UUID PRIMARY KEY,
